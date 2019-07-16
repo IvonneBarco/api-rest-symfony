@@ -12,7 +12,7 @@ use Symfony\Component\Validator\Constraints\Email;
 
 use App\Entity\User;
 use App\Entity\Video;
-use Symfony\Component\Validator\Constraints\Valid;
+use App\Services\JwtAuth;
 
 class UserController extends AbstractController
 {    
@@ -116,6 +116,7 @@ class UserController extends AbstractController
                     'email' => $email
                 ));
 
+            
                 // Si no existe, guardo el usuario
                 if(count($isset_user) == 0){
 
@@ -153,6 +154,59 @@ class UserController extends AbstractController
         //Hacer respuesta en json
         // return new JsonResponse($data);
         return $this->resjson($data);
+    }
 
+    public function login(Request $request, JwtAuth $jwt_auth){
+
+        //Recibir los dats por post
+        $json = $request->get('json', null);
+        $params = json_decode($json);
+
+        //Array por defecto para devolver
+        $data = [
+            'status' => 'error',
+            'code' => 200,
+            'message' => 'El usuario no se ha podido identificar'
+        ];
+
+        //Comprobar y validar datos
+        if($json != null){
+
+            $email = (!empty($params->email)) ? $params->email: null;
+            $password = (!empty($params->password)) ? $params->password: null;
+            $gettoken = (!empty($params->gettoken)) ? $params->gettoken: null;
+
+            $validator = Validation::createValidator();
+            $validate_email = $validator->validate($email, [
+                new Email()
+            ]);
+
+            if(!empty($email) && !empty($password) && count($validate_email) == 0){
+                
+                //Cifrar la contraseña
+                $pwd = hash('sha256', $password);
+
+                //Si todo es valido, llamaremos a un servicio para identificar al usuario (jwt, o un objeto)
+                //Crear servicio jwt
+                
+
+                //Crear servicio de jwt
+                $data = [
+                    'message' => $jwt_auth->signup()
+                ];
+
+            }else{
+                $data = [
+                    'message' => 'VALIDACIÓN INCORRECTA   '
+                ];
+            }
+
+
+        }
+
+        
+                //Si nos devuelve bien los datos, respuesta
+
+        return $this->resjson($data);
     }
 }
