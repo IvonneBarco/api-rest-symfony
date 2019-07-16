@@ -7,12 +7,12 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 
 /**
- * Users
+ * User
  *
  * @ORM\Table(name="users")
  * @ORM\Entity
  */
-class User
+class User implements \JsonSerializable
 {
     /**
      * @var int
@@ -66,10 +66,9 @@ class User
     private $createdAt = 'current_timestamp()';
 
     /**
-     * @ORM\OneToMany(targetEntity="App\Entity\Video", mapperBy="user")
+     * @ORM\OneToMany(targetEntity="App\Entity\Video", mappedBy="user")
      */
 
-    /**Propiedad **/
     private $videos;
 
     public function __construct()
@@ -161,5 +160,14 @@ class User
         return $this->videos;
     }
 
+    public function jsonSerialize(): array
+    {
+        return[
+            'id' => $this->id,
+            'name' => $this->name,
+            'surname' => $this->surname,
+            'email' => $this->email
+        ];
+    }
 
 }

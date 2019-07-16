@@ -5,7 +5,7 @@ namespace App\Entity;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Videos
+ * Video
  *
  * @ORM\Table(name="videos", indexes={@ORM\Index(name="fk_video_user", columns={"user_id"})})
  * @ORM\Entity
@@ -66,7 +66,7 @@ class Video
     /**
      * @var \User
      *
-     * @ORM\ManyToOne(targetEntity="User", inversedBy="videos")
+     * @ORM\ManyToOne(targetEntity="User", inversedBy="video")
      * @ORM\JoinColumns({
      *   @ORM\JoinColumn(name="user_id", referencedColumnName="id")
      * })
