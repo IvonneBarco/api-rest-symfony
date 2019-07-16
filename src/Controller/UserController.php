@@ -189,16 +189,13 @@ class UserController extends AbstractController
                 //Si todo es valido, llamaremos a un servicio para identificar al usuario (jwt, o un objeto)
                 //Crear servicio jwt
                 
+                if($gettoken){
+                    $signup = $jwt_auth->signup($email, $pwd, $gettoken);
+                }else{
+                    $signup = $jwt_auth->signup($email, $pwd);
+                }
 
-                //Crear servicio de jwt
-                $data = [
-                    'message' => $jwt_auth->signup()
-                ];
-
-            }else{
-                $data = [
-                    'message' => 'VALIDACIÓN INCORRECTA   '
-                ];
+                return new JsonResponse($signup);
             }
 
 
