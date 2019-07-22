@@ -14,8 +14,8 @@ use App\Entity\User;
 use App\Entity\Video;
 use App\Services\JwtAuth;
 
-class UserController extends AbstractController
-{    
+class UserController extends AbstractController{    
+    
     private function resjson($data){
 
         //Serializar datos con servicio serializer
@@ -33,8 +33,8 @@ class UserController extends AbstractController
         //Devolver la respuesta
         return $response;
     }
-    public function index()
-    {
+    public function index(){
+
         $user_repo = $this->getDoctrine()->getRepository(User::class);
         $video_repo = $this->getDoctrine()->getRepository(Video::class);
 
@@ -81,9 +81,9 @@ class UserController extends AbstractController
         if($json != null){
             
             $name = (!empty($params->name)) ? $params->name : null;
-            $surname = (!empty($params->name)) ? $params->surname : null;
-            $email = (!empty($params->name)) ? $params->email : null;
-            $password = (!empty($params->name)) ? $params->password : null;
+            $surname = (!empty($params->surname)) ? $params->surname : null;
+            $email = (!empty($params->email)) ? $params->email : null;
+            $password = (!empty($params->password)) ? $params->password : null;
         
             $validator = Validation::createValidator();
             $validate_email = $validator->validate($email, [
@@ -158,7 +158,7 @@ class UserController extends AbstractController
 
     public function login(Request $request, JwtAuth $jwt_auth){
 
-        //Recibir los dats por post
+        //Recibir los datos por post
         $json = $request->get('json', null);
         $params = json_decode($json);
 
