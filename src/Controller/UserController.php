@@ -128,7 +128,7 @@ class UserController extends AbstractController{
                         'status' => 'success',
                         'code' => 200,
                         'message' => 'Usuario creado con éxito',
-                        'json' => $params
+                        'json' => $user
                     ];
 
                 }else{
@@ -137,7 +137,7 @@ class UserController extends AbstractController{
                         'status' => 'error',
                         'code' => 400,
                         'message' => 'El usuario ya existe',
-                        'json' => $params
+                        'json' => $user
                     ];
                 }
 

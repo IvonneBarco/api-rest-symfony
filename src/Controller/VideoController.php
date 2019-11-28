@@ -3,20 +3,23 @@
 namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Validator\Validation;
 use Symfony\Component\Validator\Constraints\Email;
+use Knp\Component\Pager\PaginatorInterface;
 
 
 use App\Entity\User;
 use App\Entity\Video;
 use App\Services\JwtAuth;
 
-class VideoController extends AbstractController
+class VideoController extends Controller
 {
-    private function resjson($data){
+    private function resjson($data)
+    {
 
         //Serializar datos con servicio serializer
         $json = $this->get('serializer')->serialize($data, 'json');
@@ -42,9 +45,8 @@ class VideoController extends AbstractController
         ]);
     }
 
-    public function create(Request $request, JwtAuth $jwt_auth){
-
-          
+    public function create(Request $request, JwtAuth $jwt_auth, $id = null)
+    {
 
         //Devolver una respuesta
         $data = [
@@ -59,7 +61,7 @@ class VideoController extends AbstractController
         //Comprobar si es correcto
         $authCheck = $jwt_auth->checkToken($token);
 
-        if($authCheck){
+        if ($authCheck) {
 
             //Recoger datos por post
 
@@ -70,13 +72,13 @@ class VideoController extends AbstractController
             $identity = $jwt_auth->checkToken($token, true);
 
             //Comprobar y validar datos
-            if(!empty($json)){
+            if (!empty($json)) {
                 $user_id = ($identity->sub != null) ? $identity->sub : null;
-                $title = (!empty($params->title)) ? $params->title: null;
-                $description = (!empty($params->description)) ? $params->description: null;
-                $url = (!empty($params->url)) ? $params->url: null;
+                $title = (!empty($params->title)) ? $params->title : null;
+                $description = (!empty($params->description)) ? $params->description : null;
+                $url = (!empty($params->url)) ? $params->url : null;
 
-                if(!empty($user_id) && !empty($title)){
+                if (!empty($user_id) && !empty($title)) {
 
                     //Guardar el nuevo video favorito en la bd
                     $em = $this->getDoctrine()->getManager();
@@ -84,35 +86,208 @@ class VideoController extends AbstractController
                         'id' => $user_id
                     ]);
 
-                    //Crear y guardar el objeto
-                    $video = new Video();
-                    $video->setUser($user);
-                    $video->setTitle($title);
-                    $video->setDescription($description);
-                    $video->setUrl($url);
-                    $video->setStatus('normal');
+                    if ($id == null) {
+                        //Crear y guardar el objeto
+                        $video = new Video();
+                        $video->setUser($user);
+                        $video->setTitle($title);
+                        $video->setDescription($description);
+                        $video->setUrl($url);
+                        $video->setStatus('normal');
 
-                    $createAt = new \Datetime('now');
-                    $updateAt = new \Datetime('now');
-                    $video->setCreatedAt($createAt);
-                    $video->setUpdatedAt($updateAt);
+                        $createAt = new \Datetime('now');
+                        $updateAt = new \Datetime('now');
+                        $video->setCreatedAt($createAt);
+                        $video->setUpdatedAt($updateAt);
 
-                    //Guardar en la bd
-                    $em->persist($video);
-                    $em->flush();
+                        //Guardar en la bd
+                        $em->persist($video);
+                        $em->flush();
 
-                    //Devolver una respuesta
-                    $data = [
-                        'status' => 'succes',
-                        'code' => 200,
-                        'message' => 'El video se ha guardado',
-                        'video' => $video
-                    ];
+                        //Devolver una respuesta
+                        $data = [
+                            'status' => 'succes',
+                            'code' => 200,
+                            'message' => 'El video se ha guardado',
+                            'video' => $video
+                        ];
+                    } else {
+
+                        $video = $this->getDoctrine()->getRepository(Video::class)->findOneBy(['id' => $id, 'user' => $identity->sub]);
+
+                        if ($video && is_object($video)) {
+
+                            $video->setTitle($title);
+                            $video->setDescription($description);
+                            $video->setUrl($url);
+
+                            $updateAt = new \Datetime('now');
+                            $video->setUpdatedAt($updateAt);
+
+                            //Guardar en la bd
+                            $em->persist($video);
+                            $em->flush();
+
+                            //Devolver una respuesta
+                            $data = [
+                                'status' => 'succes',
+                                'code' => 200,
+                                'message' => 'El video se ha actualizado',
+                                'video' => $video
+                            ];
+
+                        }
+                    }
                 }
-            }            
+            }
         }
 
-      
+
+        return $this->resjson($data);
+    }
+
+    public function videos(Request $request, JwtAuth $jwt_auth, PaginatorInterface $paginator)
+    {
+
+        //Recoger la cabecera de autenticación
+        $token = $request->headers->get('Authorization');
+
+        //Comprobar el token
+        $authCheck = $jwt_auth->checkToken($token);
+
+        //Si es valido
+        if ($authCheck) {
+
+            //Conseguir la identidad del usuario
+            $identity = $jwt_auth->checkToken($token, true);
+
+            //Entity manager
+            $em = $this->getDoctrine()->getManager();
+
+            //Hacer una consulta para paginar
+            // $dql = "SELECT v FROM App\Entity\Video v WHERE v.user = {$identity->sub} ORDER BY v.id DESC"; //Lista solo los del usuario
+            $dql = "SELECT v FROM App\Entity\Video v ORDER BY v.id DESC"; //Lista todos los videos
+            $query = $em->createQuery($dql);
+
+            //Recoger el parametro page de la url
+            $page = $request->query->getInt('page', 1);
+            $items_per_page = 5;
+
+            //Innovar paginación
+            $pagination = $paginator->paginate($query, $page, $items_per_page);
+            $total = $pagination->getTotalItemCount();
+
+            //Preparar array de datos para devolver
+            $data = array(
+                'status' => 'success',
+                'code' => 200,
+                'total_items_count' => $total,
+                'current_page' => $page,
+                'items_per_page' => $items_per_page,
+                'total_pages' => ceil($total / $items_per_page),
+                'videos' => $pagination,
+                'user_id' => $identity->sub
+            );
+        } else {
+
+            //Si falla devolver este array
+            $data = array(
+                'status' => 'error',
+                'code' => 404,
+                'message' => 'No se puede listar los videos en este momento'
+            );
+        }
+
+
+
+        return $this->resjson($data);
+    }
+
+    public function detail(Request $request, JwtAuth $jwt_auth, $id = null)
+    {
+
+
+        //Recoger la cabecera de autenticación
+        $token = $request->headers->get('Authorization');
+
+        //Comprobar el token
+        $authCheck = $jwt_auth->checkToken($token);
+
+        //Respuesta por defecto
+        $data = array(
+            'status' => 'error',
+            'code' => 404,
+            'message' => 'Detalle video no encontrado'
+        );
+
+
+        //Si es valido
+        if ($authCheck) {
+
+            //Conseguir la identidad del usuario
+            $identity = $jwt_auth->checkToken($token, true);
+
+            //Sacar el objeto del video en base a la bd
+            $video = $this->getDoctrine()->getRepository(Video::class)->findOneBy(['id' => $id]);
+
+            //Comprobar si el video existe y es propiedad del usuario identificado
+            if ($video && \is_object($video) && $identity->sub == $video->getUser()->getId()) {
+
+                $data = array(
+                    'status' => 'success',
+                    'code' => 200,
+                    'video' => $video
+                );
+            }
+        }
+
+        return $this->resjson($data);
+    }
+
+    public function remove(Request $request, JwtAuth $jwt_auth, $id = null)
+    {
+
+        //Recoger la cabecera de autenticación
+        $token = $request->headers->get('Authorization');
+
+        //Comprobar el token
+        $authCheck = $jwt_auth->checkToken($token);
+
+        //Respuesta por defecto
+        $data = array(
+            'status' => 'error',
+            'code' => 404,
+            'message' => 'Video no encontrado'
+        );
+
+        //Si es valido
+        if ($authCheck) {
+
+            //Conseguir la identidad del usuario
+            $identity = $jwt_auth->checkToken($token, true);
+
+            //Doctrine
+            $doctrine = $this->getDoctrine(); //para hacer el borrado
+            //Entity manager
+            $em = $this->getDoctrine()->getManager(); //metodo que hace cambios en la bd
+
+            $video = $doctrine->getRepository(Video::class)->findOneBy(['id' => $id]);
+
+            //Comprobar si el video existe y es propiedad del usuario identificado
+            if ($video && \is_object($video) && $identity->sub == $video->getUser()->getId()) {
+                $em->remove($video);
+                $em->flush();
+
+                $data = array(
+                    'status' => 'success',
+                    'code' => 200,
+                    'video' => $video
+                );
+            }
+        }
+
+
+
         return $this->resjson($data);
     }
 }
